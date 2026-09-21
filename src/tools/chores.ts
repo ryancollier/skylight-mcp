@@ -178,8 +178,17 @@ The chore will appear on the Skylight display.`,
         .number()
         .optional()
         .describe("Reward points for completing this chore"),
+      routine: z
+        .boolean()
+        .optional()
+        .describe(
+          "Create this as a Routine instead of a regular chore. Routines display grouped by time of day " +
+            "(Morning/Afternoon/Evening) rather than in the flat chore list. When true, recurrencePattern " +
+            "must be an RRULE with exactly one BYHOUR of 6 (Morning), 14 (Afternoon), or 20 (Evening) — " +
+            "e.g. 'RRULE:FREQ=DAILY;BYHOUR=6'."
+        ),
     },
-    async ({ summary, date, time, assignee, recurring, recurrencePattern, rewardPoints }) => {
+    async ({ summary, date, time, assignee, recurring, recurrencePattern, rewardPoints, routine }) => {
       try {
         const config = getConfig();
         const choreDate = date ? parseDate(date, config.timezone) : getTodayDate(config.timezone);
@@ -243,6 +252,7 @@ The chore will appear on the Skylight display.`,
           recurring: recurring ?? false,
           recurrenceSet,
           rewardPoints,
+          routine,
         });
 
         const parts = [
