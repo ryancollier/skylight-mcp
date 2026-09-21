@@ -10,14 +10,13 @@ export interface AvatarResource {
   };
 }
 
+/**
+ * Unlike most Skylight resources, /api/colors returns plain objects — no
+ * JSON:API type/id/attributes wrapper.
+ */
 export interface ColorResource {
-  type: "color";
-  id: string;
-  attributes: {
-    name?: string;
-    hex?: string;
-    [key: string]: unknown;
-  };
+  name?: string;
+  hex?: string;
 }
 
 interface AvatarsResponse {

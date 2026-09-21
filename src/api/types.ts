@@ -206,26 +206,17 @@ export interface CreateTaskBoxItemRequest {
 }
 
 // List request types
+// The Skylight API uses a flat request body for these, not JSON:API format.
 export interface CreateListRequest {
-  data: {
-    type: "list";
-    attributes: {
-      label: string;
-      kind: "shopping" | "to_do";
-      color?: string | null;
-    };
-  };
+  label: string;
+  kind: "shopping" | "to_do";
+  color?: string | null;
 }
 
 export interface UpdateListRequest {
-  data: {
-    type: "list";
-    attributes: Partial<{
-      label: string;
-      kind: "shopping" | "to_do";
-      color: string | null;
-    }>;
-  };
+  label?: string;
+  kind?: "shopping" | "to_do";
+  color?: string | null;
 }
 
 // List item request types
