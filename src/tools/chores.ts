@@ -410,14 +410,24 @@ Use this when:
 
 Parameters:
 - choreId (required): ID of the chore to delete (from get_chores)
+- applyTo: For a RECURRING chore, pass 'all' to delete the entire series — this is currently the
+  only value Skylight's live API accepts. Omit entirely for a non-recurring chore.
 
-Note: This permanently removes the chore. For recurring chores, this may only delete one instance.`,
+Note: This permanently removes the chore(s). Per-occurrence deletion of a recurring chore ('this' /
+'this_and_following') is NOT currently supported — Skylight rejects both with a 400 error
+("you must have a valid value for apply_to") despite them looking like they should work. Passing
+either will fail; use 'all' or don't delete individual occurrences of a recurring chore through
+this tool yet.`,
     {
       choreId: z.string().describe("ID of the chore to delete"),
       applyTo: z
-        .enum(["this", "this_and_following", "all"])
+        .enum(["all"])
         .optional()
-        .describe("For recurring chores: 'this' (just this occurrence), 'this_and_following' (this and future), 'all' (entire series). Defaults to 'this'."),
+        .describe(
+          "For a recurring chore, pass 'all' to delete the entire series — the only value Skylight's " +
+            "live API currently accepts. Omit for a non-recurring chore. Per-occurrence deletion isn't " +
+            "currently supported (Skylight rejects both 'this' and 'this_and_following')."
+        ),
     },
     async ({ choreId, applyTo }) => {
       try {
