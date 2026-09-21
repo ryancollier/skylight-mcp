@@ -106,6 +106,7 @@ Returns chores with their assignees, due dates, and completion status.`,
             const parts = [
               `- ${attrs.summary}`,
               `  ID: ${chore.id}`,
+              ...(attrs.emoji_icon ? [`  Icon: ${attrs.emoji_icon}`] : []),
               `  Date: ${formatDateForDisplay(attrs.start)}${attrs.start_time ? ` at ${attrs.start_time}` : ""}`,
               `  Status: ${attrs.status}`,
             ];
@@ -191,6 +192,13 @@ The chore will appear on the Skylight display.`,
         .number()
         .optional()
         .describe("Reward points for completing this chore"),
+      emojiIcon: z
+        .string()
+        .optional()
+        .describe(
+          "A single emoji to display as the chore's icon (e.g. '🪥'), separate from the summary text. " +
+            "Skylight's own app picks this from a native emoji keyboard, so any standard unicode emoji works."
+        ),
       routine: z
         .boolean()
         .optional()
@@ -202,7 +210,7 @@ The chore will appear on the Skylight display.`,
             "from BYHOUR, and the API rejects the request if both are set."
         ),
     },
-    async ({ summary, date, time, assignee, recurring, recurrencePattern, rewardPoints, routine }) => {
+    async ({ summary, date, time, assignee, recurring, recurrencePattern, rewardPoints, emojiIcon, routine }) => {
       try {
         const config = getConfig();
         const choreDate = date ? parseDate(date, config.timezone) : getTodayDate(config.timezone);
@@ -255,6 +263,7 @@ The chore will appear on the Skylight display.`,
           recurring: recurring ?? false,
           recurrenceSet,
           rewardPoints,
+          emojiIcon,
           routine,
           upForGrabs: assignee ? undefined : true,
         });
@@ -263,6 +272,10 @@ The chore will appear on the Skylight display.`,
           `Created chore: "${chore.attributes.summary}"`,
           `Date: ${formatDateForDisplay(chore.attributes.start)}${chore.attributes.start_time ? ` at ${chore.attributes.start_time}` : ""}`,
         ];
+
+        if (chore.attributes.emoji_icon) {
+          parts.push(`Icon: ${chore.attributes.emoji_icon}`);
+        }
 
         if (assignee) {
           parts.push(`Assigned to: ${assignee}`);
@@ -314,6 +327,7 @@ Parameters:
 - date: New due date
 - time: New due time
 - assignee: New family member assignment
+- emojiIcon: New emoji icon for the chore, separate from the summary text
 - applyToSeries: If true, updates the recurring template so all future instances are affected.
   Without this, updating a recurring chore only changes that single instance and splits the series.
 
@@ -326,9 +340,14 @@ Returns: The updated chore details.`,
       time: z.string().nullable().optional().describe("New due time (e.g., '10:00 AM', or null to clear)"),
       assignee: z.string().nullable().optional().describe("New family member assignment (or null to unassign)"),
       rewardPoints: z.number().nullable().optional().describe("New reward points (or null to clear)"),
+      emojiIcon: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("New emoji icon for the chore (e.g. '🪥'), separate from the summary text, or null to clear"),
       applyToSeries: z.boolean().optional().default(false).describe("Apply changes to all future instances of a recurring chore"),
     },
-    async ({ choreId, summary, status, date, time, assignee, rewardPoints, applyToSeries }) => {
+    async ({ choreId, summary, status, date, time, assignee, rewardPoints, emojiIcon, applyToSeries }) => {
       try {
         const config = getConfig();
 
@@ -361,15 +380,17 @@ Returns: The updated chore details.`,
           const templateUpdates: Parameters<typeof updateChoreTemplate>[1] = {};
           if (summary !== undefined) templateUpdates.summary = summary;
           if (rewardPoints !== undefined) templateUpdates.reward_points = rewardPoints;
+          if (emojiIcon !== undefined) templateUpdates.emoji_icon = emojiIcon;
           if (categoryId !== undefined) templateUpdates.category_id = categoryId;
 
           const chore = await updateChoreTemplate(templateId, templateUpdates);
+          const templateIconText = chore.attributes.emoji_icon ? ` [${chore.attributes.emoji_icon}]` : "";
 
           return {
             content: [
               {
                 type: "text" as const,
-                text: `Updated recurring chore template: "${chore.attributes.summary}" (all future instances)`,
+                text: `Updated recurring chore template: "${chore.attributes.summary}"${templateIconText} (all future instances)`,
               },
             ],
           };
@@ -382,16 +403,18 @@ Returns: The updated chore details.`,
         if (date !== undefined) updates.start = parseDate(date, config.timezone);
         if (time !== undefined) updates.startTime = time ? parseTime(time) : null;
         if (rewardPoints !== undefined) updates.rewardPoints = rewardPoints;
+        if (emojiIcon !== undefined) updates.emojiIcon = emojiIcon;
         if (categoryId !== undefined) updates.categoryId = categoryId;
 
         const chore = await updateChore(choreId, updates);
         const statusText = status === "completed" ? " (marked complete)" : status === "pending" ? " (marked pending)" : "";
+        const iconText = chore.attributes.emoji_icon ? ` [${chore.attributes.emoji_icon}]` : "";
 
         return {
           content: [
             {
               type: "text" as const,
-              text: `Updated chore: "${chore.attributes.summary}"${statusText}`,
+              text: `Updated chore: "${chore.attributes.summary}"${iconText}${statusText}`,
             },
           ],
         };

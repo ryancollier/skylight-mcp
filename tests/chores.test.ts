@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createChore, getChores } from "../src/api/endpoints/chores.js";
+import { createChore, getChores, updateChore, updateChoreTemplate } from "../src/api/endpoints/chores.js";
 
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -153,6 +153,86 @@ describe("createChore", () => {
     });
 
     expect(capturedBody?.up_for_grabs).toBeUndefined();
+  });
+
+  it("sends emoji_icon in the request body when provided", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, minimalChoreResponse);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createChore({
+      summary: "Brush teeth and hair",
+      start: "2026-09-21",
+      categoryId: "cat-1",
+      emojiIcon: "🪥",
+    });
+
+    expect(capturedBody?.emoji_icon).toBe("🪥");
+  });
+
+  it("sends emoji_icon as null when not provided (backward compatible)", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, minimalChoreResponse);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createChore({
+      summary: "Empty the dishwasher",
+      start: "2026-09-21",
+      categoryId: "cat-1",
+    });
+
+    expect(capturedBody?.emoji_icon).toBeNull();
+  });
+});
+
+describe("updateChore", () => {
+  it("sends emoji_icon in the JSON:API attributes when provided", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, { data: minimalChoreResponse.data[0] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await updateChore("1", { emojiIcon: "🛏️" });
+
+    const data = capturedBody?.data as { attributes?: Record<string, unknown> } | undefined;
+    expect(data?.attributes?.emoji_icon).toBe("🛏️");
+  });
+
+  it("omits emoji_icon entirely when not specified (backward compatible)", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, { data: minimalChoreResponse.data[0] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await updateChore("1", { summary: "New name" });
+
+    const data = capturedBody?.data as { attributes?: Record<string, unknown> } | undefined;
+    expect(data?.attributes && "emoji_icon" in data.attributes).toBe(false);
+  });
+});
+
+describe("updateChoreTemplate", () => {
+  it("sends emoji_icon in the flat PATCH body when provided, for the whole recurring series", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, { data: minimalChoreResponse.data[0] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await updateChoreTemplate("1", { emoji_icon: "📖" });
+
+    expect(capturedBody?.emoji_icon).toBe("📖");
   });
 });
 
