@@ -119,3 +119,32 @@ describe("SkylightClient token persistence", () => {
     expect(loggedIn).toBe(true);
   });
 });
+
+describe("SkylightClient empty response bodies", () => {
+  const tokenConfig: Config = {
+    token: "manual-token",
+    authType: "bearer",
+    frameId: "frame-1",
+    timezone: "America/New_York",
+  };
+
+  it("does not throw on a 200 response with an empty body (e.g. DELETE)", async () => {
+    const fetchMock = vi.fn(async () => new Response("", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new SkylightClient(tokenConfig);
+    await expect(
+      client.request("/api/frames/{frameId}/chores/123", { method: "DELETE" })
+    ).resolves.toEqual({});
+  });
+
+  it("still parses a 200 response that does have a JSON body", async () => {
+    const fetchMock = vi.fn(async () => jsonResponse(200, { data: [{ id: "1" }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new SkylightClient(tokenConfig);
+    await expect(client.get("/api/frames/{frameId}/chores")).resolves.toEqual({
+      data: [{ id: "1" }],
+    });
+  });
+});

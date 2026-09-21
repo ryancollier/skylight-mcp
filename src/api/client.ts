@@ -311,12 +311,19 @@ export class SkylightClient {
       await this.handleResponseError(response, url);
     }
 
-    // Handle 304 Not Modified
+    // Handle 304 Not Modified and other empty response bodies. Skylight
+    // returns a 200 with no body for some requests (notably DELETE), which
+    // would otherwise throw "Unexpected end of JSON input" from response.json().
     if (response.status === 304) {
       return {} as T;
     }
 
-    return response.json() as Promise<T>;
+    const text = await response.text();
+    if (!text) {
+      return {} as T;
+    }
+
+    return JSON.parse(text) as T;
   }
 
   /**
