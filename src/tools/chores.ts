@@ -406,6 +406,7 @@ Note: This permanently removes the chore. For recurring chores, this may only de
       applyTo: z
         .enum(["this", "this_and_following", "all"])
         .optional()
+        .default("this")
         .describe("For recurring chores: 'this' (just this occurrence), 'this_and_following' (this and future), 'all' (entire series). Defaults to 'this'."),
     },
     async ({ choreId, applyTo }) => {
