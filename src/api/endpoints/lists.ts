@@ -76,17 +76,12 @@ export async function createList(
   color?: string
 ): Promise<ListResource> {
   const client = getClient();
-  const request: CreateListRequest = {
-    data: {
-      type: "list",
-      attributes: {
-        label,
-        kind,
-        color: color ?? null,
-      },
-    },
-  };
-  const response = await client.post<ListResponse>("/api/frames/{frameId}/lists", request);
+  // The Skylight API uses a flat request body here (not JSON:API format).
+  const body: CreateListRequest = { label, kind };
+  if (color !== undefined) {
+    body.color = color;
+  }
+  const response = await client.post<ListResponse>("/api/frames/{frameId}/lists", body);
   return response.data;
 }
 
@@ -95,18 +90,13 @@ export async function createList(
  */
 export async function updateList(
   listId: string,
-  updates: { label?: string; kind?: "shopping" | "to_do"; color?: string | null }
+  updates: UpdateListRequest
 ): Promise<ListResource> {
   const client = getClient();
-  const request: UpdateListRequest = {
-    data: {
-      type: "list",
-      attributes: updates,
-    },
-  };
+  // The Skylight API uses a flat request body here (not JSON:API format).
   const response = await client.request<ListResponse>(`/api/frames/{frameId}/lists/${listId}`, {
     method: "PUT",
-    body: request,
+    body: updates,
   });
   return response.data;
 }

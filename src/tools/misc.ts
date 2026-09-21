@@ -88,16 +88,8 @@ Returns: List of available colors with their IDs and hex values.`,
         }
 
         const colorList = colors
-          .map((color) => {
-            const parts = [`- Color (ID: ${color.id})`];
-            for (const [key, value] of Object.entries(color.attributes)) {
-              if (value !== null && value !== undefined) {
-                parts.push(`  ${key}: ${value}`);
-              }
-            }
-            return parts.join("\n");
-          })
-          .join("\n\n");
+          .map((color) => `- ${color.name ?? "Unknown"}${color.hex ? ` (${color.hex})` : ""}`)
+          .join("\n");
 
         return {
           content: [
