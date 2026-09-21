@@ -13,6 +13,7 @@ import {
   updateListItem,
   deleteListItem,
 } from "../api/endpoints/lists.js";
+import { resolveListColor } from "../api/endpoints/misc.js";
 import { formatErrorForMcp } from "../utils/errors.js";
 
 /**
@@ -280,17 +281,25 @@ Use this when:
 Parameters:
 - label (required): Name of the list (e.g., "Vacation Packing", "Weekly Groceries")
 - kind (required): "shopping" for grocery/shopping lists, "to_do" for task lists
-- color: Optional color for the list
+- color: Color for the list — a name from get_colors (e.g. "purple") or a hex value. Skylight
+  requires a color even though it's optional here; omit it and one is picked automatically.
 
 Returns: The created list details.`,
     {
       label: z.string().describe("Name of the list (e.g., 'Vacation Packing')"),
       kind: z.enum(["shopping", "to_do"]).describe("Type of list: 'shopping' or 'to_do'"),
-      color: z.string().optional().describe("Optional color for the list"),
+      color: z
+        .string()
+        .optional()
+        .describe(
+          "Color name from get_colors (e.g. 'purple') or hex value. Skylight requires a color " +
+            "despite this being optional here — omit it and one is chosen automatically."
+        ),
     },
     async ({ label, kind, color }) => {
       try {
-        const list = await createList(label, kind, color);
+        const resolvedColor = await resolveListColor(color);
+        const list = await createList(label, kind, resolvedColor);
         return {
           content: [
             {
@@ -330,7 +339,11 @@ Returns: The updated list details.`,
       listName: z.string().optional().describe("Name of the list to update (alternative to listId)"),
       label: z.string().optional().describe("New name for the list"),
       kind: z.enum(["shopping", "to_do"]).optional().describe("New type for the list"),
-      color: z.string().nullable().optional().describe("New color for the list"),
+      color: z
+        .string()
+        .nullable()
+        .optional()
+        .describe("New color for the list — a name from get_colors (e.g. 'purple') or a hex value"),
     },
     async ({ listId, listName, label, kind, color }) => {
       try {
@@ -345,7 +358,7 @@ Returns: The updated list details.`,
         const updates: { label?: string; kind?: "shopping" | "to_do"; color?: string | null } = {};
         if (label !== undefined) updates.label = label;
         if (kind !== undefined) updates.kind = kind;
-        if (color !== undefined) updates.color = color;
+        if (color !== undefined) updates.color = color === null ? null : await resolveListColor(color);
 
         const updated = await updateList(resolved.id, updates);
         return {
