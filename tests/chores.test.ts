@@ -72,4 +72,47 @@ describe("createChore", () => {
 
     expect(capturedBody?.routine).toBeUndefined();
   });
+
+  it("forces start_time to null for routine chores, even if a startTime was passed", async () => {
+    // Skylight rejects routine:true whenever start_time is present ("routine
+    // must be blank") — a routine's time comes entirely from BYHOUR.
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, minimalChoreResponse);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createChore({
+      summary: "Morning: brush teeth and hair",
+      start: "2026-09-21",
+      startTime: "07:00", // caller-supplied, should be ignored/nulled for routines
+      categoryId: "cat-1",
+      recurring: true,
+      recurrenceSet: "RRULE:FREQ=DAILY;INTERVAL=1;BYHOUR=6",
+      routine: true,
+    });
+
+    expect(capturedBody?.start_time).toBeNull();
+  });
+
+  it("still honors an explicit startTime for a non-routine chore", async () => {
+    let capturedBody: Record<string, unknown> | undefined;
+    const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit) => {
+      capturedBody = JSON.parse(String(init?.body));
+      return jsonResponse(200, minimalChoreResponse);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createChore({
+      summary: "Pick up bedroom floor",
+      start: "2026-09-21",
+      startTime: "16:30",
+      categoryId: "cat-1",
+      recurring: true,
+      recurrenceSet: "RRULE:FREQ=DAILY",
+    });
+
+    expect(capturedBody?.start_time).toBe("16:30");
+  });
 });

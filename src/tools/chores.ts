@@ -185,7 +185,8 @@ The chore will appear on the Skylight display.`,
           "Create this as a Routine instead of a regular chore. Routines display grouped by time of day " +
             "(Morning/Afternoon/Evening) rather than in the flat chore list. When true, recurrencePattern " +
             "must be an RRULE with exactly one BYHOUR of 6 (Morning), 14 (Afternoon), or 20 (Evening) — " +
-            "e.g. 'RRULE:FREQ=DAILY;BYHOUR=6'."
+            "e.g. 'RRULE:FREQ=DAILY;BYHOUR=6'. Don't also pass `time` — a routine's time comes entirely " +
+            "from BYHOUR, and the API rejects the request if both are set."
         ),
     },
     async ({ summary, date, time, assignee, recurring, recurrencePattern, rewardPoints, routine }) => {

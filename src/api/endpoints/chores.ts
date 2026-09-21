@@ -59,7 +59,9 @@ export interface CreateChoreOptions {
    * Marks the chore as a Routine, which displays grouped by time of day
    * (Morning/Afternoon/Evening) instead of in the flat chore list. Skylight
    * requires routine chores' recurrence to use exactly one BYHOUR value of
-   * 6, 14, or 20.
+   * 6, 14, or 20, and rejects the request ("routine must be blank") if
+   * start_time is also present — a routine's time comes entirely from
+   * BYHOUR, so start_time is forced to null whenever this is true.
    */
   routine?: boolean;
 }
@@ -74,7 +76,7 @@ export async function createChore(options: CreateChoreOptions): Promise<ChoreRes
   const body: Record<string, unknown> = {
     summary: options.summary,
     start: options.start,
-    start_time: options.startTime ?? null,
+    start_time: options.routine ? null : options.startTime ?? null,
     recurring: options.recurring ?? false,
     reward_points: options.rewardPoints ?? null,
     emoji_icon: options.emojiIcon ?? null,
