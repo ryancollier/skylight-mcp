@@ -12,6 +12,11 @@ export interface GetChoresOptions {
   before?: string;
   includeLate?: boolean;
   filterLinkedToProfile?: boolean;
+  /**
+   * Skylight excludes up-for-grabs (unassigned) chores from this endpoint
+   * unless explicitly asked for.
+   */
+  includeUpForGrabs?: boolean;
 }
 
 export interface GetChoresResult {
@@ -28,6 +33,7 @@ export async function getChores(options: GetChoresOptions = {}): Promise<GetChor
     after: options.after,
     before: options.before,
     include_late: options.includeLate,
+    include_up_for_grabs: options.includeUpForGrabs,
   };
 
   if (options.filterLinkedToProfile) {
@@ -55,6 +61,12 @@ export interface CreateChoreOptions {
   categoryId?: string;
   rewardPoints?: number;
   emojiIcon?: string;
+  /**
+   * Marks the chore as unassigned/claimable. Skylight's create_multiple
+   * endpoint accepts chores with no category_ids at all — a category is
+   * only required when assigning to a specific family member.
+   */
+  upForGrabs?: boolean;
 }
 
 /**
@@ -80,6 +92,10 @@ export async function createChore(options: CreateChoreOptions): Promise<ChoreRes
 
   if (options.recurrenceSet) {
     body.recurrence_set = [options.recurrenceSet];
+  }
+
+  if (options.upForGrabs !== undefined) {
+    body.up_for_grabs = options.upForGrabs;
   }
 
   // create_multiple returns { data: ChoreResource[] }

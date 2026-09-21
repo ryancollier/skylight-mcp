@@ -43,8 +43,15 @@ Returns chores with their assignees, due dates, and completion status.`,
         .optional()
         .default("pending")
         .describe("Filter by completion status"),
+      includeUpForGrabs: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe(
+          "Include unassigned 'up for grabs' chores. Skylight excludes these by default, so this defaults to true here."
+        ),
     },
-    async ({ date, dateEnd, includeLate, assignee, status }) => {
+    async ({ date, dateEnd, includeLate, assignee, status, includeUpForGrabs }) => {
       try {
         const config = getConfig();
         const startDate = date ? parseDate(date, config.timezone) : getTodayDate(config.timezone);
@@ -54,6 +61,7 @@ Returns chores with their assignees, due dates, and completion status.`,
           after: startDate,
           before: endDate,
           includeLate: includeLate ?? true,
+          includeUpForGrabs: includeUpForGrabs ?? true,
         });
 
         let chores = result.chores;
@@ -104,6 +112,8 @@ Returns chores with their assignees, due dates, and completion status.`,
 
             if (assigneeName) {
               parts.push(`  Assigned to: ${assigneeName}`);
+            } else if (attrs.up_for_grabs) {
+              parts.push(`  Assigned to: Up for grabs (unclaimed)`);
             }
 
             if (attrs.recurring) {
@@ -164,7 +174,10 @@ The chore will appear on the Skylight display.`,
       assignee: z
         .string()
         .optional()
-        .describe("Family member to assign (e.g., 'Dad', 'Mom', 'Kids')"),
+        .describe(
+          "Family member to assign (e.g., 'Dad', 'Mom', 'Kids'). Omit entirely to create an unassigned " +
+            "'up for grabs' chore that any family member can claim."
+        ),
       recurring: z
         .boolean()
         .optional()
@@ -184,39 +197,28 @@ The chore will appear on the Skylight display.`,
         const config = getConfig();
         const choreDate = date ? parseDate(date, config.timezone) : getTodayDate(config.timezone);
 
-        // Resolve assignee to category ID (required by the API)
-        if (!assignee) {
-          // Fetch and list available categories so the user knows what to pass
-          const { getCategories } = await import("../api/endpoints/categories.js");
-          const categories = await getCategories();
-          const names = categories.map((c) => c.attributes.label ?? c.id).join(", ");
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `The Skylight API requires a category (family member) for every chore.\nPlease provide an assignee. Available: ${names || "none found — check your frame ID"}`,
-              },
-            ],
-            isError: true,
-          };
+        // No assignee means an unassigned "up for grabs" chore — Skylight
+        // accepts chores with no category at all, it's only required when
+        // assigning to a specific family member.
+        let categoryId: string | undefined;
+        if (assignee) {
+          const category = await findCategoryByName(assignee);
+          if (!category) {
+            const { getCategories } = await import("../api/endpoints/categories.js");
+            const categories = await getCategories();
+            const names = categories.map((c) => c.attributes.label ?? c.id).join(", ");
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: `Could not find a family member named "${assignee}".\nAvailable categories: ${names || "none found"}`,
+                },
+              ],
+              isError: true,
+            };
+          }
+          categoryId = category.id;
         }
-
-        const category = await findCategoryByName(assignee);
-        if (!category) {
-          const { getCategories } = await import("../api/endpoints/categories.js");
-          const categories = await getCategories();
-          const names = categories.map((c) => c.attributes.label ?? c.id).join(", ");
-          return {
-            content: [
-              {
-                type: "text" as const,
-                text: `Could not find a family member named "${assignee}".\nAvailable categories: ${names || "none found"}`,
-              },
-            ],
-            isError: true,
-          };
-        }
-        const categoryId = category.id;
 
         // Convert simple recurrence patterns to RRULE
         let recurrenceSet: string | undefined;
@@ -243,6 +245,7 @@ The chore will appear on the Skylight display.`,
           recurring: recurring ?? false,
           recurrenceSet,
           rewardPoints,
+          upForGrabs: assignee ? undefined : true,
         });
 
         const parts = [
@@ -252,6 +255,8 @@ The chore will appear on the Skylight display.`,
 
         if (assignee) {
           parts.push(`Assigned to: ${assignee}`);
+        } else {
+          parts.push(`Assigned to: Up for grabs (unclaimed)`);
         }
 
         if (chore.attributes.recurring) {
